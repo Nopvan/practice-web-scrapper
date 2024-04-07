@@ -11,10 +11,11 @@ import (
 
 // buat quotes
 type Quotes struct {
-	Quote  string `json:"quote"`
-	Author string `json:"author"`
-	Tags   string `json:"tags"`
-	About  string `json:"about"`
+	Quote   string `json:"quote"`
+	Author  string `json:"author"`
+	Tags    string `json:"tags"`
+	About   string `json:"about"`
+	Details Detail `json:"details"`
 }
 
 // buat detail author
@@ -26,14 +27,27 @@ type Detail struct {
 }
 
 // function buat ngambil detail author
-func detail() {
+func details(authorURL string) Detail {
+	// authorURL = ("https://quotes.toscrape.com/author/Albert-Einstein/")
 	c := colly.NewCollector()
 
+	var d Detail
 	// details := []Detail{}
 
-	c.OnHTML("", func(h *colly.HTMLElement) {
-
+	c.OnHTML("div.author-details", func(h *colly.HTMLElement) {
+		d = Detail{
+			AuthorTitle:  h.ChildText("h3.author-title"),
+			BornDate:     h.ChildText("span.author-born-date"),
+			BornLocation: h.ChildText("span.author-born-location"),
+			Description:  h.ChildText("div.author-description"),
+		}
+		// details = append(details, d)
 	})
+
+	// Visit authorURL untuk mengambil detail penulis
+	c.Visit(authorURL)
+
+	return d
 
 }
 
@@ -57,18 +71,21 @@ func main() {
 
 		tagsString := strings.Join(tags, " ")
 
+		// buat ambil URL penulis dari "About" link
+		authorUrl := h.ChildAttr("a", "href")
+
+		// buat ambil detail penulis menggunakan fungsi details
+		authorDetail := details("https://quotes.toscrape.com" + authorUrl)
+
 		// fmt.Println(h.ChildAttr("a", "href"))
 		q := Quotes{
-			Quote:  h.ChildText("span.text"),
-			Author: h.ChildText("small.author"),
-			Tags:   tagsString,
-			About:  h.ChildAttr("a", "href"),
+			Quote:   h.ChildText("span.text"),
+			Author:  h.ChildText("small.author"),
+			Tags:    tagsString,
+			About:   authorUrl,
+			Details: authorDetail,
 		}
 		quotes = append(quotes, q)
-	})
-
-	c.OnHTML("span a", func(h *colly.HTMLElement) {
-		c.Visit(h.Request.AbsoluteURL("href"))
 	})
 
 	c.OnRequest(func(r *colly.Request) {
